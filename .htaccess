@@ -1,0 +1,1 @@
+RewriteRule ^cc\.aspx$ cc.php [L,QSA]

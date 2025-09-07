@@ -1,0 +1,9 @@
+{
+  "require": {
+    "php": ">=5.3.2",
+    "phpoffice/phpspreadsheet": "^4.3",
+    "mpdf/mpdf": "*",
+    "endroid/qr-code": "^6.0",
+    "mpdf/qrcode": "^1.2"
+  }
+}
