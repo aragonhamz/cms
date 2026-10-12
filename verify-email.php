@@ -10,7 +10,7 @@
    </head>
    <body>
           <?php
-            if($_GET['key'] && $_GET['token'])
+            if(!empty($_GET['key']) && !empty($_GET['token']))
             {
               include "connection.inc.php";
                 $login = "";

@@ -4,22 +4,20 @@ date_default_timezone_set('Asia/Kolkata');
 
 $order_id = "";
 $tracking_id = "";
+$bank_ref_no = "";
 $amount = "";
 $type = "";
 $login_token = "";
-$redirect="";
+$redirect = 'index.php';
 
-if (!isset($_SESSION['user_id'])){
-    header('location: index.php');
-    exit();
-}
 // Restore session using token if needed
 if (isset($_GET['login_token'])) {
     $login_token = $_GET['login_token'];
     // Retrieve values from URL
     $order_id = $_GET['order_id'] ?? 'N/A';
     $tracking_id = $_GET['tid'] ?? 'N/A';
-    $amount = $_GET['bank_ref_no'] ?? 'N/A';
+    $bank_ref_no = $_GET['bank_ref_no'] ?? 'N/A';
+    $amount = $_GET['amount'] ?? 'N/A';
     $type = $_GET['type'] ?? 'N/A';
 
     $stmt = $con->prepare("SELECT * FROM users WHERE login_token = ? LIMIT 1");
@@ -49,6 +47,10 @@ if (isset($_GET['login_token'])) {
     } 
 }
 
+if (!isset($_SESSION['user_id'])) {
+    header('location: index.php');
+    exit();
+}
 
 ?>
 <div class="container mt-5">
@@ -68,7 +70,7 @@ if (isset($_GET['login_token'])) {
             </tr>
             <tr>
                 <th>Bank reference No</th>
-                <td>₹<?php echo htmlspecialchars($bank_ref_no); ?></td>
+                <td><?php echo htmlspecialchars($bank_ref_no); ?></td>
             </tr>
             <tr>
                 <th>Amount Paid</th>

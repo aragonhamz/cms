@@ -1,8 +1,8 @@
 <?php
-define('ENCRYPTION_KEY', 'hamar.kharshiing@gmail.com198632'); // Must be 32 characters for AES-256-CBC
-define('ENCRYPTION_IV', '7005160168021282'); // Must be 16 characters
-define('FROM_EMAIL', 'aragon.hamz@gmail.com');
-define('WEBSITE_NAME', 'http://localhost/cms');
+define('ENCRYPTION_KEY', APP_ENCRYPTION_KEY);
+define('ENCRYPTION_IV', APP_ENCRYPTION_IV);
+define('FROM_EMAIL', SMTP_USERNAME);
+define('WEBSITE_NAME', APP_URL);
 define('NEW_POST_DAYS', 3);
 // Define your base site URL
 
@@ -11,6 +11,103 @@ define('DEGREEAMOUNT', 7.00);
 define('DUPDEGREEAMOUNT', 2.00);
 define('PROVISIONALAMOUNT', 3.00);
 define('MIGRATIONAMOUNT', 4.00);
+
+function getAppSetting($key, $default = '') {
+    global $con;
+    static $tableExists = null;
+
+    if (!$con instanceof mysqli) {
+        return $default;
+    }
+    if ($tableExists === null) {
+        $result = $con->query("SHOW TABLES LIKE 'app_settings'");
+        $tableExists = $result && $result->num_rows === 1;
+    }
+    if (!$tableExists) {
+        return $default;
+    }
+    $stmt = $con->prepare('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1');
+    $stmt->bind_param('s', $key);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    return $row ? $row['setting_value'] : $default;
+}
+
+function initializeAppSettings() {
+    global $con;
+    $con->query("CREATE TABLE IF NOT EXISTS app_settings (
+        setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $defaults = [
+        'app_url' => APP_URL,
+        'ccavenue_merchant_id' => app_env('CCAVENUE_MERCHANT_ID', '213372'),
+        'degree_amount' => DEGREEAMOUNT,
+        'duplicate_degree_amount' => DUPDEGREEAMOUNT,
+        'provisional_amount' => PROVISIONALAMOUNT,
+        'migration_amount' => MIGRATIONAMOUNT,
+        'mail_from_email' => SMTP_USERNAME,
+        'mail_from_name' => 'Examination NEHU',
+        'mail_reply_to' => SMTP_USERNAME,
+    ];
+    $stmt = $con->prepare('INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)');
+    foreach ($defaults as $key => $value) {
+        $value = (string) $value;
+        $stmt->bind_param('ss', $key, $value);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+function saveAppSetting($key, $value) {
+    global $con;
+    $stmt = $con->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+    $stmt->bind_param('ss', $key, $value);
+    $saved = $stmt->execute();
+    $stmt->close();
+    return $saved;
+}
+
+function csrfToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verifyCsrfToken($token) {
+    return is_string($token) && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function appUrl() {
+    return rtrim(getAppSetting('app_url', APP_URL), '/');
+}
+
+function paymentMerchantId() {
+    return getAppSetting('ccavenue_merchant_id', app_env('CCAVENUE_MERCHANT_ID', '213372'));
+}
+
+function configureMailer($mail) {
+    if (SMTP_USERNAME === '' || SMTP_PASSWORD === '') {
+        throw new RuntimeException('SMTP is not configured. Set SMTP_USERNAME and SMTP_PASSWORD in .env.');
+    }
+    $mail->isSMTP();
+    $mail->Host = SMTP_HOST;
+    $mail->SMTPAuth = true;
+    $mail->Username = SMTP_USERNAME;
+    $mail->Password = SMTP_PASSWORD;
+    $mail->SMTPSecure = SMTP_ENCRYPTION === 'ssl' ? 'ssl' : 'tls';
+    $mail->Port = SMTP_PORT;
+    $fromEmail = getAppSetting('mail_from_email', SMTP_USERNAME);
+    $fromName = getAppSetting('mail_from_name', 'Examination NEHU');
+    $replyTo = getAppSetting('mail_reply_to', $fromEmail);
+    $mail->setFrom($fromEmail, $fromName);
+    $mail->addReplyTo($replyTo, 'Support');
+}
 
 function pr($arr){
 	echo '<pre>';
@@ -30,29 +127,20 @@ function get_safe_value($con,$str){
 	}
 }
 function isAdmin(){
-	if(!isset($_SESSION['user_role'])){
-	?>
-		<script>
-		window.location.href='login.php';
-		</script>
-		<?php
+	if (!isset($_SESSION['user_role'])) {
+        header('Location: login.php');
+        exit;
 	}
-	if($_SESSION['user_role']=='user' && $_SESSION['user_role']!='admin'){
-		?>
-		<script>
-		window.location.href='restricted.php';
-		</script>
-		<?php
+	if ($_SESSION['user_role'] !== 'admin') {
+        header('Location: index.php');
+        exit;
 	}
 }
 
 function LoggedinUserNotAllowed(){
 	if (isset($_SESSION['user_id'])) {
-		?>
-		<script>
-		window.location.href='restricted.php';
-		</script>
-		<?php
+		header('Location: index.php');
+        exit;
 	}
 }
 function checkIfLogin(){
@@ -121,13 +209,13 @@ function getLoginToken($con, $userid){
 
 function getamount($doctype){
 	if($doctype=='Degree'){
-		return DEGREEAMOUNT;
+		return (float) getAppSetting('degree_amount', DEGREEAMOUNT);
 	}elseif($doctype=='DuplicateDegree'){
-		return DUPDEGREEAMOUNT;
+		return (float) getAppSetting('duplicate_degree_amount', DUPDEGREEAMOUNT);
 	}elseif($doctype=='Provisional'){
-		return PROVISIONALAMOUNT;
+		return (float) getAppSetting('provisional_amount', PROVISIONALAMOUNT);
 	}elseif($doctype=='Migration'){
-		return MIGRATIONAMOUNT;
+		return (float) getAppSetting('migration_amount', MIGRATIONAMOUNT);
 	}
 }
 

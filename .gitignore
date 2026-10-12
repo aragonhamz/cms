@@ -1,0 +1,8 @@
+/uploads/*
+!/uploads/.htaccess
+/.env
+/.tmp.driveupload/
+/vendor/
+*.sql
+*.zip
+*.xlsx

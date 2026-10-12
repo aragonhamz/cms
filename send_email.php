@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/connection.inc.php';
+require_once __DIR__ . '/functions.inc.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -15,17 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $mail = new PHPMailer(true);
 
     try {
-        //Server settings
-       // $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com'; // Set the SMTP server to send through
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'aragon.hamz@gmail.com'; // SMTP username (your Gmail email)
-        $mail->Password   = ''; // SMTP password (your Gmail password)
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        //Recipients
-        $mail->setFrom('aragon.hamz@gmail.com', 'Hamar Name');
+        configureMailer($mail);
         $mail->addAddress($recipient_email); // Add a recipient
 
         // Content

@@ -7,14 +7,9 @@ $tracking_id = "";
 $amount = "";
 $type = "";
 $login_token = "";
-$redirect="";
+$redirect = 'index.php';
 
-if (!isset($_SESSION['user_id'])){
-    header('location: index.php');
-    exit();
-}
 // Restore session using token if needed
-// !isset($_SESSION['user_id']) && 
 if (isset($_GET['login_token'])) {
     $login_token = $_GET['login_token'];
     // Retrieve values from URL
@@ -50,6 +45,10 @@ if (isset($_GET['login_token'])) {
     } 
 }
 
+if (!isset($_SESSION['user_id'])) {
+    header('location: index.php');
+    exit();
+}
 
 ?>
 <div class="container mt-5">

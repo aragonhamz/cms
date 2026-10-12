@@ -1,5 +1,6 @@
 <?php
 require('top.inc.php');
+require_once 'mail_queue.inc.php';
 
 // if (!isset($_SESSION['user_id']) || !isset($_GET['app_id']) || !isset($_GET['type'])){
 //     die("Unauthorized access.");
@@ -11,18 +12,36 @@ if (empty($_SESSION['user_role']) || $_SESSION['user_role'] !== 'dispatch') {
 $search = '';
 $updated = false;
 
-if (isset($_POST['update_one'])) {
+if (isset($_POST['update_one']) && verifyCsrfToken($_POST['csrf_token'] ?? null)) {
     $app_id = (int) $_POST['app_id'];
-    $table = $_POST['table'];
+    $table = $_POST['table'] ?? '';
     $new_msg = trim($_POST['new_msg']);
 
-    if (!empty($app_id) && !empty($table) && !empty($new_msg)) {
+    if (!empty($app_id) && in_array($table, ['dcer', 'mdcer'], true) && !empty($new_msg)) {
+        initializeMailQueue();
         $stmt = $con->prepare("UPDATE {$table} SET msgs = ? WHERE application_id = ? AND status = 'Approved'");
         $stmt->bind_param("si", $new_msg, $app_id);
         $stmt->execute();
+        $changed = $stmt->affected_rows;
         $stmt->close();
-        echo "<div class='alert alert-success'>Message updated for Application ID $app_id</div>";
+        if ($changed === 1) {
+            $stmt = $con->prepare("SELECT a.name, u.email FROM {$table} a JOIN users u ON a.user_id = u.id WHERE a.application_id = ? LIMIT 1");
+            $stmt->bind_param('i', $app_id);
+            $stmt->execute();
+            $recipient = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($recipient && filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                $safeName = htmlspecialchars($recipient['name']);
+                $safeMessage = htmlspecialchars($new_msg);
+                queueEmail($recipient['email'], 'Update on your NEHU certificate application', "<p>Dear {$safeName},</p><p>Your application status has been updated: <strong>{$safeMessage}</strong>.</p>", 50, $recipient['name']);
+            }
+            echo "<div class='alert alert-success'>Status updated and notification queued for Application ID $app_id.</div>";
+        } else {
+            echo "<div class='alert alert-warning'>No approved application was updated.</div>";
+        }
     }
+} elseif (isset($_POST['update_one'])) {
+    echo "<div class='alert alert-danger'>Your session has expired. Refresh the page and try again.</div>";
 }
 
 
@@ -102,6 +121,7 @@ if (isset($_GET['search'])) {
                 </select>
                 <input type="hidden" name="app_id" value="<?= $row['application_id'] ?>">
                 <input type="hidden" name="table" value="<?= $row['source'] ?>">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                 <button type="submit" name="update_one" class="btn btn-success btn-sm mt-4">Update</button>
     
             </td>

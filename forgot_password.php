@@ -1,4 +1,5 @@
 <?php require('top.inc.php');
+require_once 'mail_queue.inc.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -28,7 +29,7 @@ if (isset($_POST['submit'])) {
         
 
         $subject = "Password Reset Request from NEHU";
-        $link = WEBSITE_NAME."/reset_password.php?token=" . $token;   
+        $link = appUrl() . "/reset_password.php?token=" . $token;
         $mailmessage = "
              <!DOCTYPE html>
               <html lang='en'>
@@ -111,34 +112,13 @@ if (isset($_POST['submit'])) {
 
               </body>
               </html>";
-     $mail = new PHPMailer(true);
         try {
           if($stmt->execute()==true){
-              //Server settings
-              $mail->isSMTP();
-            
-              $mail->Host       = 'smtp.gmail.com'; // Set the SMTP server to send through
-              $mail->SMTPAuth   = true;
-              $mail->Username   = 'aragon.hamz@gmail.com'; // SMTP username (your Gmail email)
-              $mail->Password   = 'wxxaxvtzodjhilqf'; // SMTP password (your Gmail password)
-              $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-              $mail->Port       = 587;
-
-              //Recipients
-              $mail->setFrom('aragon.hamz@gmail.com', 'Examination NEHU');
-              $mail->addAddress($email); // Add a recipient
-                 $mail->addReplyTo('aragon.hamz@gmail.com', 'Support');
-                 $mail->addBcc("hamar.kharshiing@gmail.com");
-              // Content
-              $mail->isHTML(true); // Set email format to HTML
-              $mail->Subject = $subject;
-              $mail->Body    = $mailmessage;
-
-              $mail->send();
+              queueEmail($email, $subject, $mailmessage, 100);
               $color = 'success';
               //$lastid = $con->insert_id;
               //$message = 'Saved Successfully, with the ID: '. $lastid;
-              $message = 'Please check your email';
+              $message = 'If the account exists, a reset email has been queued.';
               echo '<script>  
               swal("Success!", "Your password reset request is successful!, please check your email", "success");  
               </script>';  
@@ -151,7 +131,7 @@ if (isset($_POST['submit'])) {
           echo '<script>  
           swal("Error!", "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";, "danger");  
           </script>';  
-          $message= "Message could not be sent. Mailer Error:" . $mail->ErrorInfo;
+          $message = 'Could not queue the password reset email.';
       }         
     
   }else {

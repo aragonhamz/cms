@@ -15,11 +15,13 @@ if (isset($_GET['token'])) {
         $email = $data['email'];
 
         if (isset($_POST['submit'])) {
-            $new_password = mysqli_real_escape_string($con, $_POST['new_password']);
-            $confirm_password = mysqli_real_escape_string($con, $_POST['confirm_password']);
+            $new_password = $_POST['new_password'] ?? '';
+            $confirm_password = $_POST['confirm_password'] ?? '';
 
-            if ($new_password === $confirm_password) {
-                $hashed_password = md5(mysqli_escape_string($con, $_POST['new_password']));
+            if (strlen($new_password) < 8) {
+                echo "<div class='alert alert-danger'>Password must be at least 8 characters.</div>";
+            } elseif ($new_password === $confirm_password) {
+                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
                 // Update user password
                 $stmt = $con->prepare("UPDATE users SET password = ? WHERE email = ?");
@@ -74,4 +76,4 @@ if (isset($_GET['token'])) {
                     </form>
                   </div>
     </div>   
-   <?php require('footer.inc.php');?> 
+   <?php require('footer.inc.php');?>

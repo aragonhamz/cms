@@ -1,5 +1,6 @@
 <?php
 require('top.inc.php');
+require_once 'mail_queue.inc.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -115,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allowed_types = ['image/jpeg', 'image/png', 'application/pdf'];
     $max_file_size = 2 * 1024 * 1024; // 2MB
 
+        initializeMailQueue();
         // Start a transaction to keep consistency
         $con->begin_transaction();
 
@@ -248,34 +250,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 </body>
                 </html>";
-          $mail = new PHPMailer(true);
-
         if ($stmt->execute()) {
            
             // $_SESSION['appid'] = $appid; // Store app ID in session for payment
             // $_SESSION['name'] = $name;
             // $_SESSION['doctype'] = $doctype;
             // $_SESSION['amount'] = 1; // or dynamically set it based on doc type
-              $mail->isSMTP();
-              
-                $mail->Host       = 'smtp.gmail.com'; // Set the SMTP server to send through
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'aragon.hamz@gmail.com'; // SMTP username (your Gmail email)
-                $mail->Password   = 'wxxaxvtzodjhilqf'; // SMTP password (your Gmail password)
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
-
-                //Recipients
-                $mail->setFrom('aragon.hamz@gmail.com', 'Examination NEHU');
-                $mail->addAddress($email); // Add a recipient
-                  $mail->addReplyTo('aragon.hamz@gmail.com', 'Support');
-                  $mail->addBcc("hamar.kharshiing@gmail.com");
-                // Content
-                $mail->isHTML(true); // Set email format to HTML
-                $mail->Subject = $subject;
-                $mail->Body    = $mailmessage;
-
-                $mail->send();
+                queueEmail($email, $subject, $mailmessage, 50, $name);
 
             $showPaymentDiv = true;
              echo "<div class='alert alert-success'>Your application is submitted Successfully, <a href='myapplications.php'>View your application</a> and please check your email.</div>";
@@ -305,12 +286,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h4 class="mb-3 text-success">You have been applied successfully! Please proceed with payment. If you do not make the payment your form will not be submitted</h4>
                     <form method="post" id="paymentForm" action="ccavRequestHandler.php">
                         <input type="hidden" name="tid" value="<?php echo $appid. rand(100,999); ?>" />
-                        <input type="hidden" name="merchant_id" value="213372" />
+                        <input type="hidden" name="merchant_id" value="<?php echo htmlspecialchars(paymentMerchantId()); ?>" />
                         <input type="hidden" name="order_id" value="<?php echo $appid; ?>" />
                         <input type="hidden" name="amount" value="<?php echo getamount($row['doctype']); ?>" />
                         <input type="hidden" name="currency" value="INR" />
-                        <input type="hidden" name="redirect_url" value="<?php echo WEBSITE_NAME; ?>/ccavResponseHandler.php" />
-                        <input type="hidden" name="cancel_url" value="<?php echo WEBSITE_NAME; ?>/ccavResponseHandler.php" />
+                        <input type="hidden" name="redirect_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
+                        <input type="hidden" name="cancel_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
                         <input type="hidden" name="language" value="EN" />
                         <input type="hidden" name="merchant_param1" value="<?php echo $row['doctype']?> Certificate" />
                         <input type="hidden" name="merchant_param2" value="ManualCertificate" />

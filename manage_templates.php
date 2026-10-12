@@ -10,7 +10,7 @@ $templateDir = __DIR__ . '/templates/';
 if (is_dir($templateDir)) {
     $files = glob($templateDir . '*.php');
     foreach ($files as $file) {
-        $formatOptions[] = basename($file); // e.g., format1.php
+        $formatOptions[] = pathinfo($file, PATHINFO_FILENAME);
     }
 }
 
@@ -19,14 +19,14 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === 'get_format') {
     $degree = mysqli_real_escape_string($con, $_POST['degree']);
     $res = mysqli_query($con, "SELECT format FROM degreetype WHERE degree = '$degree' LIMIT 1");
     $row = mysqli_fetch_assoc($res);
-    echo $row['format'] ?? '';
+    echo isset($row['format']) ? pathinfo($row['format'], PATHINFO_FILENAME) : '';
     exit;
 }
 
 // 🔸 Handle update form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['degree'], $_POST['format']) && !isset($_POST['ajax'])) {
     $degree = mysqli_real_escape_string($con, $_POST['degree']);
-    $format = mysqli_real_escape_string($con, $_POST['format']);
+    $format = mysqli_real_escape_string($con, pathinfo(basename($_POST['format']), PATHINFO_FILENAME));
 
     $stmt = $con->prepare("UPDATE degreetype SET format = ? WHERE degree = ?");
     $stmt->bind_param("ss", $format, $degree);

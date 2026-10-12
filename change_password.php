@@ -5,9 +5,9 @@ checkIfLogin();
 
 if (isset($_POST['submit'])) {
     $user_id = $_SESSION['user_id'];
-    $current_password = mysqli_real_escape_string($con, $_POST['current_password']);
-    $new_password = mysqli_real_escape_string($con, $_POST['new_password']);
-    $confirm_password = mysqli_real_escape_string($con, $_POST['confirm_password']);
+    $current_password = $_POST['current_password'] ?? '';
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
 
     // Fetch user record
     $stmt = $con->prepare("SELECT password FROM users WHERE id = ?");
@@ -17,9 +17,16 @@ if (isset($_POST['submit'])) {
     $user = $result->fetch_assoc();
     $stmt->close();
 
-    if (md5($current_password) == $user['password']) {
-        if ($new_password === $confirm_password) {
-            $hashed_password = md5($new_password);
+    $isLegacyHash = $user && preg_match('/^[a-f0-9]{32}$/i', $user['password']) === 1;
+    $currentPasswordIsValid = $isLegacyHash
+        ? hash_equals(strtolower($user['password']), md5($current_password))
+        : ($user && password_verify($current_password, $user['password']));
+
+    if ($currentPasswordIsValid) {
+        if (strlen($new_password) < 8) {
+            echo "<div class='alert alert-danger'>New password must be at least 8 characters.</div>";
+        } elseif ($new_password === $confirm_password) {
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
             // Update password
             $stmt = $con->prepare("UPDATE users SET password = ? WHERE id = ?");

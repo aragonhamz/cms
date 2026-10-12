@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once __DIR__ . '/connection.inc.php';
+require_once __DIR__ . '/functions.inc.php';
 if (!isset($_SESSION['manual_order_id'])) {
     header('Location: index.php');
     exit();
@@ -14,12 +16,12 @@ $amount = $_SESSION['manual_amount'];
 <body>
 <form method="post" id="manualPaymentForm" action="ccavRequestHandler.php">
     <input type="hidden" name="tid" value="<?php echo time(); ?>" />
-    <input type="hidden" name="merchant_id" value="213372" />
+    <input type="hidden" name="merchant_id" value="<?php echo htmlspecialchars(paymentMerchantId()); ?>" />
     <input type="hidden" name="order_id" value="<?php echo $order_id; ?>" />
     <input type="hidden" name="amount" value="<?php echo $amount; ?>" />
     <input type="hidden" name="currency" value="INR" />
-    <input type="hidden" name="redirect_url" value="http://localhost/cms/ccavResponseHandler.php" />
-    <input type="hidden" name="cancel_url" value="http://localhost/cms/ccavResponseHandler.php" />
+    <input type="hidden" name="redirect_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
+    <input type="hidden" name="cancel_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
     <input type="hidden" name="language" value="EN" />
     <input type="hidden" name="merchant_param1" value="Manual Degree Certificate" />
 </form>

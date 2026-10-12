@@ -1,5 +1,6 @@
 <?php
 require('top.inc.php');
+isAdmin();
 ?>
 
 <?php

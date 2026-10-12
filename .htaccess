@@ -1,1 +1,5 @@
 RewriteRule ^cc\.aspx$ cc.php [L,QSA]
+
+<FilesMatch "^(?:\.env|config\.inc\.php|connection\.inc\.php|functions\.inc\.php|mail_queue\.inc\.php|send_email_queue\.php|send_email\.php|sendmail\.php)$">
+    Require all denied
+</FilesMatch>

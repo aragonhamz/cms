@@ -14,7 +14,6 @@ $user_id = $_SESSION['user_id'];
 $encrypted_id = get_safe_value($con, $_GET['app_id'] ?? '');
 //$encrypted_id = $_GET['app_id'] ?? '';
 $app_id = decryptAppId($encrypted_id);
-echo $app_id;
 // Fetch application and user details
 
 $db = ($_GET['type'] == 'ManualCertificate') ? 'mdcer' : 'dcer';

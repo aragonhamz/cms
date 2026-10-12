@@ -1,10 +1,13 @@
 <?php
+require_once __DIR__ . '/config.inc.php';
 ob_start();
-	session_start();
-	$database = 'ecom';
-	$host = 'localhost';
-	$username ='root';
-	$password = '';
+	if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+	$database = DB_NAME;
+	$host = DB_HOST;
+	$username = DB_USERNAME;
+	$password = DB_PASSWORD;
 	$con = new mysqli($host, $username, $password, $database);
 	if($con->connect_error){
 		die('Connection failed'. mysqli_connect_error());

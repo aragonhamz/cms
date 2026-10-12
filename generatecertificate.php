@@ -78,9 +78,22 @@ $mpdf = new \Mpdf\Mpdf([
 $qrURL = "http://exams.nehu.ac.in/mcverify?v1=$roll&v2=$app_id";
 $qrHTML = "<barcode code='$qrURL' type='QR' size='1' error='M' class='qr' />";
 
-$templateFile = __DIR__ . "/templates/" . strtolower($format) . "";
-if (file_exists($templateFile)) {
-    include($templateFile);
+$templateDir = __DIR__ . '/templates';
+$templateFile = null;
+$normalizedFormat = strtolower(trim($format));
+$normalizedFormat = preg_replace('/\.php$/i', '', $normalizedFormat);
+
+// Template filenames may use a different case than the format stored in the
+// database (for example, the "UG" format uses templates/UG.php).
+foreach (glob($templateDir . '/*.php') as $candidate) {
+    if (strtolower(pathinfo($candidate, PATHINFO_FILENAME)) === $normalizedFormat) {
+        $templateFile = $candidate;
+        break;
+    }
+}
+
+if ($templateFile !== null) {
+    include $templateFile;
 } else {
     die("Template not found for format: $format");
 }

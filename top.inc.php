@@ -195,6 +195,21 @@ include('functions.inc.php');
                         <i class="fas fa-fw fa-table"></i>
                         <span>Upload data</span></a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="users.php">
+                        <i class="fas fa-fw fa-users"></i>
+                        <span>Applicants</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin_settings.php">
+                        <i class="fas fa-fw fa-cog"></i>
+                        <span>Settings</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="email_queue.php">
+                        <i class="fas fa-fw fa-envelope"></i>
+                        <span>Email Queue</span></a>
+                </li>
 
                 <!-- Divider -->
                 <hr class="sidebar-divider d-none d-md-block">
@@ -317,4 +332,3 @@ include('functions.inc.php');
                 <!-- End of Topbar -->
                 <div class="container-fluid">
 
-                

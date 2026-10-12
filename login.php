@@ -4,8 +4,8 @@ require('functions.inc.php');
 $msg='';
 if(isset($_POST['submit'])){
 	//$username=get_safe_value($con,$_POST['username']);
-  $email=get_safe_value($con,$_POST['email']);
-	$password=get_safe_value($con,$_POST['password']);
+  $email = trim($_POST['email'] ?? '');
+	$password = $_POST['password'] ?? '';
     // if(!filter_var($email,FILTER_VALIDATE_EMAIL)) {
     //   $msg = "Please Enter Valid Email ID";
     //   exit();
@@ -14,15 +14,30 @@ if(isset($_POST['submit'])){
     //   $msg = "Password must be minimum of 6 characters";
     //   exit();
     // }
-	//$sql="select * from admin_users where username='$username' and password='$password'";
-  $sql="SELECT * FROM users WHERE email = '" . $email. "' and password = '" . md5($password). "'";
-	$res=$con->query($sql);
-	$count=$res->num_rows;
+	$stmt = $con->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
+  $stmt->bind_param('s', $email);
+  $stmt->execute();
+  $res = $stmt->get_result();
+	$count = $res->num_rows;
 	if($count>0){
 		$row= $res->fetch_assoc();
-		if($row['status']=='0'){
+		$isLegacyHash = preg_match('/^[a-f0-9]{32}$/i', $row['password']) === 1;
+    $passwordIsValid = $isLegacyHash
+      ? hash_equals(strtolower($row['password']), md5($password))
+      : password_verify($password, $row['password']);
+		if (!$passwordIsValid) {
+      $msg = 'Incorrect Email or Password!!';
+    } elseif($row['status']=='0'){
 			$msg="Account deactivated";	
 		}else{
+			if ($isLegacyHash) {
+        $newHash = password_hash($password, PASSWORD_DEFAULT);
+        $upgrade = $con->prepare('UPDATE users SET password = ? WHERE id = ?');
+        $upgrade->bind_param('si', $newHash, $row['id']);
+        $upgrade->execute();
+        $upgrade->close();
+      }
+			session_regenerate_id(true);
 			// $_SESSION['ADMIN_LOGIN']='yes';
 			// $_SESSION['ADMIN_ID']=$row['id'];
 			// $_SESSION['ADMIN_USERNAME']=$email;
@@ -43,6 +58,7 @@ if(isset($_POST['submit'])){
         //   </div>';
           
 	}
+	$stmt->close();
 	
 }
 

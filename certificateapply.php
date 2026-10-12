@@ -195,12 +195,12 @@ if(isset($_POST['applynow'])){
                     <h4 class="mb-3 text-success">You have been applied successfully! Please proceed with payment. If you do not make the payment your form will not be submitted/processed</h4>
                     <form method="post" id="paymentForm" action="ccavRequestHandler.php">
                         <input type="hidden" name="tid" value="<?php echo $appid. rand(100,999); ?>" />
-                        <input type="hidden" name="merchant_id" value="213372" />
+                        <input type="hidden" name="merchant_id" value="<?php echo htmlspecialchars(paymentMerchantId()); ?>" />
                         <input type="hidden" name="order_id" value="<?php echo $cerid; ?>" />
                         <input type="hidden" name="amount" value="<?php echo getamount($row['doctype']); ?>" />
                         <input type="hidden" name="currency" value="INR" />
-                        <input type="hidden" name="redirect_url" value="<?php echo WEBSITE_NAME; ?>/ccavResponseHandler.php" />
-                        <input type="hidden" name="cancel_url" value="<?php echo WEBSITE_NAME; ?>/ccavResponseHandler.php" />
+                        <input type="hidden" name="redirect_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
+                        <input type="hidden" name="cancel_url" value="<?php echo appUrl(); ?>/ccavResponseHandler.php" />
                         <input type="hidden" name="language" value="EN" />
                         <input type="hidden" name="merchant_param1" value="Degree Certificate" />
                         <input type="hidden" name="merchant_param2" value="DirectCertificate" />

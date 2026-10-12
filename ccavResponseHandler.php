@@ -8,7 +8,11 @@ include('connection.inc.php');?>
 	error_reporting(0);
 	
 	$workingKey='95E728FA350ACF438AF698B29A0F4677';		//Working Key should be provided here.
-	$encResponse=$_POST["encResp"];			//This is the response sent by the CCAvenue Server
+	if (empty($_POST['encResp'])) {
+		http_response_code(400);
+		exit('Invalid payment response.');
+	}
+	$encResponse = $_POST['encResp'];			//This is the response sent by the CCAvenue Server
 
 		$rcvdString = decrypt($encResponse, $workingKey);  // Decrypt
 		$order_status = "";
@@ -26,32 +30,22 @@ include('connection.inc.php');?>
 		$paymentDate = date('Y-m-d H:i:s');
 		// Loop through and get values
 		for ($i = 0; $i < $dataSize; $i++) {
-			$information = explode('=', $decryptValues[$i]);
-			if (trim($information[0]) == 'order_id') {
-				$order_id = $information[1];
+			$information = explode('=', $decryptValues[$i], 2);
+			if (count($information) !== 2) {
+				continue;
 			}
-			if (trim($information[0]) == 'order_status') {
-				$order_status = $information[1];
+			$key = trim($information[0]);
+			$value = $information[1];
+			switch ($key) {
+				case 'order_id': $order_id = $value; break;
+				case 'order_status': $order_status = $value; break;
+				case 'tracking_id': $tid = $value; break;
+				case 'bank_ref_no': $bank_ref_no = $value; break;
+				case 'merchant_param2': $merchant_param2 = $value; break;
+				case 'trans_date': $trans_date = $value; break;
+				case 'amount': $amount = $value; break;
+				case 'merchant_param5': $merchant_param5 = $value; break;
 			}
-			if (trim($information[0]) == 'tracking_id') {
-				$tid = $information[1];
-			}
-			if (trim($information[0]) == 'bank_ref_no') {
-				$bank_ref_no = $information[1];
-			}
-			if (trim($information[0]) == 'merchant_param2') {
-				$merchant_param2 = $information[1];
-			}
-			if (trim($information[0]) == 'trans_date') {
-				$trans_date = $information[1];
-			}
-			if (trim($information[0]) == 'amount') {
-				$amount = $information[1];
-			}
-			if (trim($information[0]) == 'merchant_param5') {
-				$merchant_param5 = $information[1];
-			}
-			
 		}
 
 		$login_token = $merchant_param5 ?? '';
@@ -81,32 +75,42 @@ include('connection.inc.php');?>
 			}
 
 
+	$certificateTables = [
+		'ManualCertificate' => 'mdcer',
+		'DirectCertificate' => 'dcer',
+	];
+
+	if (!isset($certificateTables[$merchant_param2])) {
+		http_response_code(400);
+		exit('Invalid certificate type.');
+	}
+
 	if($order_status==="Success")
 	{	
-		
-		if ($merchant_param2 == 'ManualCertificate') {
-			$stmt = $con->prepare("UPDATE mdcer SET payment = ?, amount=?, paymentOn=?, transactionID = ?, bank_ref_no = ? WHERE cer_id = ?");
-		} elseif ($merchant_param2 == 'DirectCertificate') {
-			$stmt = $con->prepare("UPDATE dcer SET payment = ?, amount=?, paymentOn=?, transactionID = ?, bank_ref_no = ? WHERE cer_id = ?");
-		}
+		$table = $certificateTables[$merchant_param2];
+		$stmt = $con->prepare("UPDATE $table SET payment = ?, amount=?, paymentOn=?, transactionID = ?, bank_ref_no = ? WHERE cer_id = ?");
 		
 		$stmt->bind_param("ssssss", $order_status, $amount, $paymentDate, $tid, $bank_ref_no, $order_id);
 		$stmt->execute();
 		$stmt->close();
 		$con->close();
 		//echo "<br>Thank you for shopping with us. With order id= ". $order_id." Your credit card has been charged and your transaction is successful. We will be shipping your order to you soon.";
-		header("Location: payment-success.php?order_id=$order_id&tid=$tid&bank_ref_no=$bank_ref_no&type=$merchant_param2&amount=$amount&login_token=$login_token");
+		header('Location: payment-success.php?' . http_build_query([
+			'order_id' => $order_id,
+			'tid' => $tid,
+			'bank_ref_no' => $bank_ref_no,
+			'type' => $merchant_param2,
+			'amount' => $amount,
+			'login_token' => $login_token,
+		]));
     	exit();
 		
 	}
 	else if($order_status==="Aborted" || $order_status==="Failure")
 	{
 		$trans_date = date('Y-m-d H:i:s');
-		if ($merchant_param2 == 'ManualCertificate') {
-			$stmt = $con->prepare("UPDATE mdcer SET payment = ?, amount = ?, paymentOn = ?, transactionID = ? WHERE cer_id = ?");
-		} elseif ($merchant_param2 == 'DirectCertificate') {
-			$stmt = $con->prepare("UPDATE dcer SET payment = ?, amount = ?, paymentOn = ?, transactionID = ? WHERE cer_id = ?");
-		}
+		$table = $certificateTables[$merchant_param2];
+		$stmt = $con->prepare("UPDATE $table SET payment = ?, amount = ?, paymentOn = ?, transactionID = ? WHERE cer_id = ?");
         
 		$stmt->bind_param("sssss", $order_status, $amount, $paymentDate, $tid, $order_id);
 		$stmt->execute();
@@ -114,7 +118,13 @@ include('connection.inc.php');?>
 		$con->close();
 		
 		//echo "<br>Your order has been aborted With order id= ". $order_id." and transaction id ". $tid ." and  token: ".$merchant_param5." and user id: ".$_SESSION['user_id']."";
-		header("Location: payment-failure.php?order_id=$order_id&tid=$tid&type=$merchant_param2&amount=$amount&login_token=$login_token");
+		header('Location: payment-failure.php?' . http_build_query([
+			'order_id' => $order_id,
+			'tid' => $tid,
+			'type' => $merchant_param2,
+			'amount' => $amount,
+			'login_token' => $login_token,
+		]));
     	exit();
 	
 	}

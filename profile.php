@@ -1,6 +1,5 @@
 <?php
 require('top.inc.php');
-//isAdmin();
 $color ='';
 $msg = '';
 $decryptedid ='';
@@ -10,6 +9,7 @@ if(isset($_GET['type']) && $_GET['type']!=''){
   if($_GET['id'] == 'self'){
     $decryptedid = intval($_SESSION['user_id']);
   }else{
+    isAdmin();
     $decryptedid = decrypt($_GET['id']);
   }
     $stmt = $con->prepare("SELECT users.name, users.mobile, user_profile.dob, user_profile.fathername, user_profile.address, user_profile.nationality FROM users LEFT JOIN user_profile on users.id=user_profile.userid WHERE users.id = ?");

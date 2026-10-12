@@ -1,6 +1,6 @@
 <?php
 require('top.inc.php');
-//isAdmin();
+isAdmin();
 
 if (!isset($_SESSION['user_id']) || !isset($_GET['app_id']) || !isset($_GET['type'])){
     die("Unauthorized access.");
@@ -499,4 +499,4 @@ document.getElementById("approveForm").addEventListener("submit", function(e) {
 
 <?php
 require('footer.inc.php');
-?> 
+?>

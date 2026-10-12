@@ -1,6 +1,7 @@
 <?php 
 include_once('connection.inc.php'); 
 require('functions.inc.php');
+require_once 'mail_queue.inc.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -17,11 +18,24 @@ if (isset($_SESSION['user_id'])){
 $message = '';
 $color = '';
 if(isset($_POST['password-reset-token']) && $_POST['email']){
-  $name = mysqli_escape_string($con, $_POST['name']);
-  $email = mysqli_escape_string($con, $_POST['email']);
-  $password = md5(mysqli_escape_string($con, $_POST['password']));
+  $name = trim($_POST['name'] ?? '');
+  $email = trim($_POST['email'] ?? '');
+  $plainPassword = $_POST['password'] ?? '';
+  $confirmPassword = $_POST['cpassword'] ?? '';
   $status= '1';
   $role = 'user';
+
+  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $message = 'Please enter a valid email address.';
+    $color = 'danger';
+  } elseif (strlen($plainPassword) < 8) {
+    $message = 'Password must be at least 8 characters.';
+    $color = 'danger';
+  } elseif ($plainPassword !== $confirmPassword) {
+    $message = 'Passwords do not match.';
+    $color = 'danger';
+  } else {
+  $password = password_hash($plainPassword, PASSWORD_DEFAULT);
  
   $sqlselect = "select * from users where email= ?";
   $stmt = $con->prepare($sqlselect);
@@ -36,9 +50,10 @@ if(isset($_POST['password-reset-token']) && $_POST['email']){
     $color = 'danger';
   }else{
   
+    initializeMailQueue();
     $con->begin_transaction();
     try {       
-      $token = md5($_POST['email']).rand(10,9999); 
+      $token = bin2hex(random_bytes(32));
       //$sqlinsert = "INSERT INTO users(name, email, email_verification_link ,password, status, role) VALUES('" . $name . "', '" . $email . "', '" . $token . "', '" . $password . "', '" . $status . "', '" . $role . "')";
       $stmt = $con->prepare("
       INSERT INTO users(name, email, email_verification_link ,password, status, role)
@@ -46,7 +61,7 @@ if(isset($_POST['password-reset-token']) && $_POST['email']){
       ");
       $stmt->bind_param("ssssis", $name, $email, $token, $password, $status, $role);
     
-      $link = "<a href=". WEBSITE_NAME. "/verify-email.php?key=".$email."&token=".$token.">Verify Email</a>";   
+      $link = "<a href=" . appUrl() . "/verify-email.php?key=" . rawurlencode($email) . "&token=" . rawurlencode($token) . ">Verify Email</a>";
       $subject = "Your Registration in Examination NEHU for Certificates";
     
       $mailmessage = "
@@ -132,34 +147,12 @@ if(isset($_POST['password-reset-token']) && $_POST['email']){
 
                 </body>
                 </html>";
-          $mail = new PHPMailer(true);
-                
             if( $stmt->execute()){
-                //Server settings
-                $mail->isSMTP();
-              
-                $mail->Host       = 'smtp.gmail.com'; // Set the SMTP server to send through
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'aragon.hamz@gmail.com'; // SMTP username (your Gmail email)
-                $mail->Password   = 'wxxaxvtzodjhilqf'; // SMTP password (your Gmail password)
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
-
-                //Recipients
-                $mail->setFrom('aragon.hamz@gmail.com', 'Examination NEHU');
-                $mail->addAddress($email); // Add a recipient
-                  $mail->addReplyTo('aragon.hamz@gmail.com', 'Support');
-                  $mail->addBcc("hamar.kharshiing@gmail.com");
-                // Content
-                $mail->isHTML(true); // Set email format to HTML
-                $mail->Subject = $subject;
-                $mail->Body    = $mailmessage;
-
-                $mail->send();
+                queueEmail($email, $subject, $mailmessage, 100, $name);
                 $color = 'success';
                 //$lastid = $con->insert_id;
                 //$message = 'Saved Successfully, with the ID: '. $lastid;
-                $message = 'Registered Successfully, please check your email';
+                $message = 'Registered successfully. Your verification email has been queued.';
                 echo '<script>  
                 swal("Success!", "You have been registered successfully!, please check your email", "success");  
                 </script>';  
@@ -174,11 +167,12 @@ if(isset($_POST['password-reset-token']) && $_POST['email']){
             echo '<script>  
             swal("Error!", "Cannot register user Error", "danger");  
             </script>';  
-            $message= "Message could not be sent. Mailer Error:" . $mail->ErrorInfo;
+            $message = 'Registration could not be completed.';
             $con->rollback();
             echo "<div class='alert alert-danger'>Error Registering : " . $e->getMessage() . "</div>";
         }         
       
+  }
   }
 }
 
